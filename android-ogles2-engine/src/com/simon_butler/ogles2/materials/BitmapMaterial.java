@@ -111,8 +111,7 @@ public class BitmapMaterial extends AbstractMaterial {
         return textureBinding;
     }
     
-	//TODO move to texture manager
-	protected int loadTexture(Bitmap texture, int textureSlot) {
+    protected int loadTexture(Bitmap texture, int textureSlot, int textureMode) {
     	/*android.graphics.Matrix matrix = new android.graphics.Matrix();
     	matrix.preScale(1, -1);
     	Bitmap tex = Bitmap.createBitmap(texture, 0, 0, texture.getWidth(), texture.getHeight(), matrix, false);
@@ -126,12 +125,16 @@ public class BitmapMaterial extends AbstractMaterial {
         
         GLES20.glTexParameteri ( GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST );
         GLES20.glTexParameteri ( GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST );
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, textureMode);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, textureMode);
         
         //texture.recycle();
         
         return textureBinding;
+    }
+    
+	protected int loadTexture(Bitmap texture, int textureSlot) {
+    	return loadTexture(texture, textureSlot, GLES20.GL_REPEAT);
     }
     
 	protected int loadTextureFromFile(AssetManager assets, String filename) 
@@ -226,6 +229,10 @@ public class BitmapMaterial extends AbstractMaterial {
     }
 	
     protected static void releaseTextureSlot(int i) {
-    	mTextureSlots[i] = false;
+    	if (i >= 0) {
+    		mTextureSlots[i] = false;
+    	} else {
+    		System.out.println("WARN: Attempted to release unassigned texture");
+    	}
     }
 }
