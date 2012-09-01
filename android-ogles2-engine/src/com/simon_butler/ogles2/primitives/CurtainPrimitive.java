@@ -20,7 +20,7 @@ public class CurtainPrimitive extends PlanePrimitive {
 	
 	protected void allocateBuffers() {
 		// initialize vertex Buffer for plane vertices 
-		allocateVerticies(((mSegmentsX+1) * (mSegmentsY)) + mNumBottomVertices);
+		allocateVerticies(getNumVertices());
 		// initialize vertex element Buffer for plane 
     	allocateFaces((mSegmentsX * (mSegmentsY-1) * 2) + mNumBottomFaces); 
     	
@@ -89,5 +89,9 @@ public class CurtainPrimitive extends PlanePrimitive {
 	
 	protected void setVertexBottom(int x, Vector3f v) {
 		setVertex(getVertexBottomIndex(x), v.array());
+	}
+	
+	protected int getNumVertices() {
+		return ((mSegmentsX+1) * (mSegmentsY)) + mNumBottomVertices;
 	}
 }
