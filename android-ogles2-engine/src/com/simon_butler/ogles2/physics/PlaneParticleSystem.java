@@ -20,12 +20,12 @@ public class PlaneParticleSystem {
 	
 	protected PlanePrimitive mPlane;
 	protected boolean mUpdating = true;
-	private float mMinDelta = 0.01f;
+	private float mMinDelta = 0.0001f;
 			
-	public PlaneParticleSystem(PlanePrimitive plane, float segSizeW, float segSizeH) {
+	public PlaneParticleSystem(PlanePrimitive plane, float segSizeW, float segSizeH, int numIterations, float gravity) {
 		//constants				
-		m_vGravity = new Vector3f(0, -1, 0);
-		mNumIterations = 1;
+		m_vGravity = new Vector3f(0, -1f * gravity, 0);
+		mNumIterations = numIterations;
 		mDrag = 0.97f;
 		
 		//variables
@@ -78,7 +78,7 @@ public class PlaneParticleSystem {
 				//x += (drag*x)-(drag*oldx)+a*fTimeStep*fTimeStep;			
 				x = x.add(x.mul(mDrag).sub(m_oldx[index].mul(mDrag)).add(m_a[index]));
 				
-				if (!mUpdating && m_oldx[index].distance(x) > mMinDelta) {
+				if (!mUpdating && m_oldx[index].distance2(x) > mMinDelta) {
 					mUpdating = true;
 				}
 				
