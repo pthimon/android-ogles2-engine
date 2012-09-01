@@ -19,13 +19,16 @@ public class PhongMaterial extends BitmapMaterial {
         "attribute vec4 aPosition;  \n" +
         //"attribute vec3 aNormal;\n" +
         "attribute vec2	aTexture;  \n" +
+        "attribute vec2	aNormalTexture;  \n" +
         
         "varying vec2 		vTexture;  \n" +
+        "varying vec2 		vNormalTexture;  \n" +
         "varying vec3 L, E, H;\n" +
         
         "void main(){               \n" +
         
-        " 	vTexture = aTexture; \n" +        
+        " 	vTexture = aTexture; \n" + 
+        "   vNormalTexture = aNormalTexture; \n" +
         " 	gl_Position = uMVPMatrix * aPosition; \n" +
         
         "	vec4 eyePosition = uMMatrix  * aPosition;\n" + 
@@ -48,11 +51,12 @@ public class PhongMaterial extends BitmapMaterial {
 		"uniform float 		uShininess;\n" +
 		
         "varying vec2 vTexture; \n" +
+        "varying vec2 vNormalTexture;  \n" +
 		"varying vec3 L, E, H;\n" +
         
         "void main(){              \n" +
         //"	vec3 Normal = normalize(N);\n" +
-        "	vec3 Normal = normalize(texture2D(uNormalMap, vTexture).xyz);\n" +
+        "	vec3 Normal = normalize(texture2D(uNormalMap, vNormalTexture).xyz);\n" +
 		"	vec3 Light  = normalize(L);\n" +
 		"	vec3 Half   = normalize(H);\n" +
 
@@ -78,6 +82,7 @@ public class PhongMaterial extends BitmapMaterial {
 	protected int muShininessHandle;
 	protected int muNormalMapHandle;
 	protected int muMMatrixHandle;
+	protected int maNormalTextureHandle;
 
 	protected float[] mMMatrix;
 	protected float[] mLightPos;
@@ -87,6 +92,8 @@ public class PhongMaterial extends BitmapMaterial {
 	
 	protected int mNormalMapSlot = -1;
 	protected int mNormalMapBinding;
+	
+	protected FloatBuffer mNormalCoords;
     
 	public PhongMaterial(Bitmap texture) {
     	super(mVertexShaderCode, mFragmentShaderCode);
@@ -142,6 +149,15 @@ public class PhongMaterial extends BitmapMaterial {
 		});
 		mvMatrix.getValues(mMMatrix);
 		GLES20.glUniformMatrix3fv(muMMatrixHandle, 1, false, mMMatrix, 0);
+		
+		if (mNormalCoords != null) {
+			mNormalCoords.position(0);
+			GLES20.glVertexAttribPointer(maNormalTextureHandle, 2, GLES20.GL_FLOAT, false, 2*4, mNormalCoords);
+		} else {
+			vertices.position(3);
+	        GLES20.glVertexAttribPointer(maNormalTextureHandle, 2, GLES20.GL_FLOAT, false, 8*4, vertices);
+		}
+        GLES20.glEnableVertexAttribArray(maNormalTextureHandle);
 
 		/*normalMatrix.reset();
 		mvMatrix.invert(normalMatrix);
@@ -171,6 +187,8 @@ public class PhongMaterial extends BitmapMaterial {
 		muMMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMMatrix");
 		
 		muNormalMapHandle = GLES20.glGetUniformLocation(mProgram, "uNormalMap");
+		
+		maNormalTextureHandle = GLES20.glGetAttribLocation(mProgram, "aNormalTexture");
     }
     
     public void setSpecularColor(float[] color) {
@@ -189,7 +207,7 @@ public class PhongMaterial extends BitmapMaterial {
 		if (mNormalMapSlot < 0) {
 			mNormalMapSlot = getNextTextureSlot();
 		}
-    	mNormalMapBinding = loadTexture(bitmap, mNormalMapSlot);     
+    	mNormalMapBinding = loadTexture(bitmap, mNormalMapSlot, GLES20.GL_CLAMP_TO_EDGE);     
 	}
 	
 	public void updateNormalMap(Bitmap bitmap) {
@@ -204,6 +222,10 @@ public class PhongMaterial extends BitmapMaterial {
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + mNormalMapSlot);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mNormalMapBinding);
         GLES20.glUniform1i(muNormalMapHandle, mNormalMapSlot);
+	}
+	
+	public void setNormalCoords(FloatBuffer n) {
+		mNormalCoords = n;
 	}
     
 }
