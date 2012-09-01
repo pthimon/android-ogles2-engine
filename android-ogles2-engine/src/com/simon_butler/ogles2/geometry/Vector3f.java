@@ -109,6 +109,12 @@ public class Vector3f
 	{
 		return rhs.sub(this).norm();
 	}
+	
+	public float distance2(Vector3f rhs)
+	{
+		Vector3f diff = rhs.sub(this);
+		return diff.dot(diff);
+	}
 
 	public float x()
 	{
