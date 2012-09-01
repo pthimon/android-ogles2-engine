@@ -1,7 +1,24 @@
 package com.simon_butler.ogles2.model;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.PorterDuff.Mode;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
+import android.os.Environment;
 
 import com.simon_butler.ogles2.geometry.Vector3f;
 import com.simon_butler.ogles2.materials.PhongMaterial;
@@ -11,11 +28,12 @@ import com.simon_butler.ogles2.primitives.CurtainPrimitive;
 public class Curtain extends CurtainPrimitive {
 	
 	protected Bitmap mNormalMap;
-	private int mHeadingHeight = 15;
-	private int mHeadingTotalHeight = 16;//35;
+	protected Bitmap mHeadingNormalMap;
+	private int mHeadingHeight = 16;
+	private int mHeadingTotalHeight = 32;//35;
 	
 	//private float mNormalSF = 0.5f;
-	private float mNormalSF = 10.0f;
+	private float mNormalSF = 5.0f;
 	
 	private boolean mUpdatePhysics = false;
 	
@@ -27,7 +45,7 @@ public class Curtain extends CurtainPrimitive {
 	protected CurtainPhysics mPhysics;
 	
 	public Curtain(CurtainDirection direction, int width, int drop) {
-		super(width,drop,(int)width/10,4);
+		super(width,drop,(int)width/50,4);
 		
 		buildPrimitive();
 		alterVertices();
@@ -63,6 +81,7 @@ public class Curtain extends CurtainPrimitive {
 		int w = mat.getTextureWidth();
 		int h = mat.getTextureHeight();
 		mNormalMap = Bitmap.createBitmap(w, mHeadingTotalHeight, Bitmap.Config.ARGB_8888);
+		mHeadingNormalMap = Bitmap.createBitmap(w, mHeadingTotalHeight, Bitmap.Config.ARGB_8888);
 		
 		//heading
 		float segsize = w / (mSegmentsX*6);
@@ -93,12 +112,21 @@ public class Curtain extends CurtainPrimitive {
 			int blue = 127;
 			
 			for (int j=0; j < mHeadingTotalHeight-1; j++) {
-				mNormalMap.setPixel(i, j, Color.rgb(red, green, blue));
+				mHeadingNormalMap.setPixel(i, j, Color.rgb(red, green, blue));
 			}
 			
 			y1 = y2;
 		}
 		
+		// Create a temporary bitmap
+	    Canvas tempCanvas = new Canvas(mHeadingNormalMap);
+		
+	    // Draw a linear gradient that modifies the alpha channel of mHeadingMap to fade it out
+	    LinearGradient g = new LinearGradient(0,mHeadingTotalHeight-mHeadingHeight,0,mHeadingTotalHeight,0x00000000, 0xFF000000, Shader.TileMode.CLAMP);
+	    Paint p = new Paint();
+	    p.setShader(g);
+	    p.setXfermode(new PorterDuffXfermode(Mode.DST_OUT));
+	    tempCanvas.drawRect(0, 0, w, mHeadingTotalHeight-1, p);
 		
 		
            /*try {
@@ -119,6 +147,25 @@ public class Curtain extends CurtainPrimitive {
 			}*/
           	
 		mat.setNormalMap(mNormalMap);
+		
+		//heading height in mm
+		float headingHeight = 100f;
+		
+		FloatBuffer normalCoords = ByteBuffer.allocateDirect(getNumVertices() * 2 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+		for (int i=0; i < mSegmentsY; i++) {
+    		float v = (i/(float)mSegmentsY) * (mHeight/headingHeight);
+    		for (int j=0; j <= mSegmentsX; j++) {
+    			float u = j/(float)mSegmentsX;
+    			normalCoords.put(u);
+        		normalCoords.put(v);
+    		}
+		}
+		for (int j=0; j < mNumBottomVertices; j++) {
+			float u = (j/(float)mNumBottomSegments);
+			normalCoords.put(u);
+    		normalCoords.put(mHeight/headingHeight);
+		}
+		mat.setNormalCoords(normalCoords);
 	}
 	
 	// initilise folds in curtain
@@ -157,7 +204,7 @@ public class Curtain extends CurtainPrimitive {
 			PhongMaterial material = (PhongMaterial)mMaterial;
 			int w = material.getTextureWidth();
 			
-			float segsize = w / mSegmentsX;
+			float segsize = (float)w / (float)mSegmentsX;
 			
 			float dx = (float)Math.PI / segsize;
 			float ny = dx;
@@ -171,7 +218,10 @@ public class Curtain extends CurtainPrimitive {
 			Vector3f v1 = vertex(0, mSegmentsY);
 			Vector3f v2 = vertex(1, mSegmentsY);
 			int vertexIndex = 1;
-			float sf = (float)Math.abs(v2.z() - v1.z()) / segsize;
+			float sf = (float)Math.abs(v2.z() - v1.z()) / (getWidth() / mSegmentsX);
+			if (sf > 1) sf = 1;
+			
+			int[] curtainRow = new int[w];
 			
 			//TODO just scale pixel values (red channel), don't recalculate cosine & normal
 			for (int i=0; i < w; i++) {
@@ -183,7 +233,8 @@ public class Curtain extends CurtainPrimitive {
 					vertexIndex++;
 					v1 = v2;
 					v2 = vertex(vertexIndex, mSegmentsY);
-					sf = (float)Math.abs(v2.z() - v1.z()) / segsize;
+					sf = (float)Math.abs(v2.z() - v1.z()) / (getWidth() / mSegmentsX);
+					if (sf > 1) sf = 1;
 				}
 				//loop every 2*pi
 				if (angleIndex > Math.PI) {
@@ -191,6 +242,7 @@ public class Curtain extends CurtainPrimitive {
 				}
 				//get dy
 				float y2 = (float)Math.cos(angleIndex);
+
 				float dy = (y2 - y1) * sf * mNormalSF;
 				//calc normal
 				float nx = -dy;
@@ -206,22 +258,25 @@ public class Curtain extends CurtainPrimitive {
 				//set row 124
 				//mNormalMap.setPixel(i, mHeadingTotalHeight-1, Color.rgb(red, green, blue));
 				
-				for (int j=0; j < mHeadingTotalHeight; j++) {
-					mNormalMap.setPixel(i, j, Color.rgb(red, green, blue));
-				}
+				//for (int j=15; j < mHeadingTotalHeight; j++) {
+				//	mNormalMap.setPixel(i, j, Color.rgb(red, green, blue));
+				//}
+				curtainRow[i] = Color.rgb(red,green,blue);
 				
-				y1 = y2;
+				y1 = y2;			
+			}
+		
+			//curtainNormal.setPixels(curtainRow,0,0,0,mHeadingTotalHeight-mHeadingHeight,w,mHeadingTotalHeight-mHeadingHeight);
+			for (int i=0; i < mHeadingTotalHeight-mHeadingHeight; i++) {
+				mNormalMap.setPixels(curtainRow,0,w,0,mHeadingTotalHeight-mHeadingHeight+i,w,1);
 			}
 			
-			//row 15 to 124 linearly interp
-			/*for (var i:uint=mHeadingHeight; i < mHeadingTotalHeight-1; i++) {
-				//copy in dest
-				mNormalMap.copyPixels(mNormalMap, curtainRow, new Point(0,i));
-				var mult:int = 255 - (((i-14)/(mHeadingTotalHeight-mHeadingHeight)) * 255);
-				mNormalMap.merge(mNormalMap, headingRow, new Point(0,i), mult, mult, mult, mult);
-			}*/
+			// composite heading on top of curtain normal
+		    Canvas tempCanvas = new Canvas(mNormalMap);
+		    tempCanvas.drawBitmap(mHeadingNormalMap, 0, 0, null);
 			
 			material.updateNormalMap(mNormalMap);
+			
 			
 			/*try {
 	        	String path = Environment.getExternalStorageDirectory().toString();
