@@ -14,7 +14,7 @@ public class CurtainPhysics extends PlaneParticleSystem {
 	private CurtainDirection mPos;
 		
 	public CurtainPhysics(PlanePrimitive plane, CurtainDirection pos) {
-		super(plane, (plane.getWidth() * mGather) / plane.getSegmentsX(), plane.getHeight() / plane.getSegmentsY());
+		super(plane, (plane.getWidth() * mGather) / plane.getSegmentsX(), plane.getHeight() / plane.getSegmentsY(), 2, 1);
 		
 		mLeftCorner = mCurrentLeftCorner = -plane.getWidth()/2;
 		mRightCorner = mCurrentRightCorner = plane.getWidth()/2;
@@ -36,24 +36,10 @@ public class CurtainPhysics extends PlaneParticleSystem {
 		//position vertices along the curtain rail
 		float x = mCurrentLeftCorner;
 		float dx = (mCurrentRightCorner - mCurrentLeftCorner) / mPlane.getSegmentsX();
-		float dx2 = dx * 2;
-		//var dxSq:Number = dx*dx;
-		for(i=0; i<mNumParticlesW; i+=2) {
-			//even vertices
+		
+		for(i=0; i<mNumParticlesW; i++) {
 			mPlane.setVertex(i, 0, new Vector3f(x, mTop, 0));
-			x += dx2;
-		}
-		x = mCurrentLeftCorner + dx;
-		//var c:Number = ((mCurrentRightCorner - mCurrentLeftCorner) * mGather) / mPlane.segmentsW;
-		//var cSq:Number = c*c;
-		for(i=1; i<mNumParticlesW; i+=2) {
-			//odd vertices
-			//eyelet:
-			//var y:Number = Math.sqrt(cSq - dxSq);
-			//pencil pleat:
-			float z = 0;
-			mPlane.setVertex(i, 0, new Vector3f(x, mTop, z));
-			x += dx2;
+			x += dx;
 		}
 	}
 	
